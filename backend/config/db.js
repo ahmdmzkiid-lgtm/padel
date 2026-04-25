@@ -3,13 +3,11 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+// Clean up DATABASE_URL
+let dbUrl = (process.env.DATABASE_URL || '').replace(/^=/, '');
+
 // Remove channel_binding param that can cause issues with pg driver
-let dbUrl = process.env.DATABASE_URL || '';
-if (dbUrl.includes('channel_binding')) {
-  const url = new URL(dbUrl);
-  url.searchParams.delete('channel_binding');
-  dbUrl = url.toString();
-}
+dbUrl = dbUrl.replace(/[&?]channel_binding=[^&]*/g, '');
 
 const pool = new pg.Pool({
   connectionString: dbUrl,
