@@ -188,6 +188,11 @@ export const createBooking = async (req, res) => {
       ]
     );
 
+    // Notify Everyone Real-time
+    if (req.io) {
+      req.io.emit('schedule_updated');
+    }
+
     res.status(201).json({
       message: 'Booking berhasil dibuat',
       booking: result.rows[0],
