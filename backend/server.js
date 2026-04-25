@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 import dotenv from 'dotenv';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
@@ -25,9 +26,32 @@ const __dirname = dirname(__filename);
 const app = express();
 const server = http.createServer(app);
 
+// ── CORS whitelist ─────────────────────────────────────────────────────────────
+// Tambahkan domain frontend kamu di sini. Bisa lebih dari satu.
+const ALLOWED_ORIGINS = [
+  'https://padel-zeta-blue.vercel.app',
+  'http://localhost:5173',   // dev local Vite
+  'http://localhost:3000',   // dev local alternatif
+];
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    // Izinkan request tanpa origin (Postman, mobile app, server-to-server)
+    if (!origin) return callback(null, true);
+    if (ALLOWED_ORIGINS.includes(origin)) {
+      return callback(null, true);
+    }
+    callback(new Error(`CORS: Origin tidak diizinkan: ${origin}`));
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+};
+
+// ── Socket.io ─────────────────────────────────────────────────────────────────
 const io = new Server(server, {
   cors: {
-    origin: true,
+    origin: ALLOWED_ORIGINS,
     methods: ['GET', 'POST'],
     credentials: true
   }
@@ -41,12 +65,17 @@ app.use((req, res, next) => {
 
 const PORT = process.env.PORT || 5000;
 
-// ── Middleware ────────────────────────────────────────────────────────────────
-app.use(cors({
-  origin: true,
-  credentials: true
+// ── Security Middleware ────────────────────────────────────────────────────────
+
+// Helmet: pasang HTTP security headers otomatis
+// Melindungi dari: clickjacking, XSS via headers, MIME sniffing, dll
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' }, // izinkan akses gambar dari frontend
+  contentSecurityPolicy: false, // matikan CSP bawaan helmet agar tidak konflik dengan API
 }));
-app.use(express.json());
+
+app.use(cors(corsOptions));
+app.use(express.json({ limit: '10mb' })); // batasi body size
 
 // ── Rate Limiting ─────────────────────────────────────────────────────────────
 
@@ -117,6 +146,16 @@ app.use('/uploads', express.static(join(__dirname, 'public/uploads')));
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'PadelZone API is running' });
+});
+
+// ── Global Error Handler ───────────────────────────────────────────────────────
+// Tangkap error CORS dan error tak terduga, jangan bocorkan stack trace ke client
+app.use((err, req, res, next) => {
+  if (err.message && err.message.startsWith('CORS:')) {
+    return res.status(403).json({ message: 'Akses ditolak: origin tidak diizinkan.' });
+  }
+  console.error('Unhandled error:', err);
+  res.status(500).json({ message: 'Terjadi kesalahan server.' });
 });
 
 // ── Socket.io ─────────────────────────────────────────────────────────────────
