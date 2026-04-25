@@ -25,11 +25,7 @@ const __dirname = dirname(__filename);
 const app = express();
 const server = http.createServer(app);
 
-const allowedOrigins = [
-  'http://localhost:5173',
-  'https://padel-git-main-ahmdmzkiid-lgtms-projects.vercel.app',
-  /\.vercel\.app$/,
-];
+const allowedOrigins = '*';
 
 const io = new Server(server, {
   cors: {

@@ -107,7 +107,7 @@ INSERT INTO users (name, email, password, is_admin, role)
 VALUES (
   'Admin PadelZone',
   'padelzone@admin.id',
-  '$2b$10$oABBQlpyFaOKYY6XIsRDPujF4gyglbQ9jsE8Ffu8GNLjxAbtbmSW.',
+  '$2b$10$H32prvalXvuWdhOPbYmse.10SOSswHrCKTiIu2gWV78N6wFsIGxQW',
   true,
   'owner'
 ) ON CONFLICT (email) DO NOTHING;
