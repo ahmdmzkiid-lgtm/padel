@@ -1,0 +1,29 @@
+CREATE TABLE IF NOT EXISTS users (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,
+  email VARCHAR(100) UNIQUE NOT NULL,
+  phone VARCHAR(20),
+  password VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS bookings (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  court_name VARCHAR(50) NOT NULL,
+  booking_date DATE NOT NULL,
+  start_time TIME NOT NULL,
+  duration INTEGER NOT NULL,
+  total_price DECIMAL(12, 2) NOT NULL,
+  status VARCHAR(20) DEFAULT 'pending',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS payments (
+  id SERIAL PRIMARY KEY,
+  booking_id INTEGER REFERENCES bookings(id) ON DELETE CASCADE,
+  amount DECIMAL(12, 2) NOT NULL,
+  payment_method VARCHAR(50) NOT NULL,
+  status VARCHAR(20) DEFAULT 'pending',
+  paid_at TIMESTAMP
+);
