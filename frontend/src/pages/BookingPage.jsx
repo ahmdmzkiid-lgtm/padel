@@ -36,7 +36,7 @@ const slotsOverlap = (startA, durA, startB, durB) => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const BookingPage = () => {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -76,6 +76,14 @@ const BookingPage = () => {
       return { ...s, date: d.toISOString().split('T')[0] };
     }));
   }, []);
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-dark pt-32 pb-12 flex justify-center">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   if (!user) {
     navigate('/login', { state: { redirectTo: '/booking', redirectState: location.state } });

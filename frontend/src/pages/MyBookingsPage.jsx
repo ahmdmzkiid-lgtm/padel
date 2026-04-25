@@ -8,7 +8,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import * as htmlToImage from 'html-to-image';
 
 const MyBookingsPage = () => {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { showAlert } = useModal();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -68,23 +68,27 @@ const MyBookingsPage = () => {
       }
     };
 
-    if (user) {
-      fetchBookings();
-      
-      // Real-time updates
-      socket.emit('join', `user_${user.id}`);
-      
-      socket.on('booking_updated', (data) => {
+    if (!authLoading) {
+      if (user) {
         fetchBookings();
-      });
+        
+        // Real-time updates
+        socket.emit('join', `user_${user.id}`);
+        
+        socket.on('booking_updated', (data) => {
+          fetchBookings();
+        });
 
-      return () => {
-        socket.off('booking_updated');
-      };
+        return () => {
+          socket.off('booking_updated');
+        };
+      } else {
+        setLoading(false);
+      }
     }
-  }, [user]);
+  }, [user, authLoading]);
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-dark pt-32 pb-12 flex justify-center">
         <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
