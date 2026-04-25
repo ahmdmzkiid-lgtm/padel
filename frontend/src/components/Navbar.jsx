@@ -289,7 +289,7 @@ const Navbar = () => {
             isOpen ? 'max-h-[800px] overflow-y-auto custom-scrollbar opacity-100 mt-4' : 'max-h-0 opacity-0'
           }`}
         >
-          <div className="glass rounded-2xl p-4 space-y-1">
+          <div className="bg-[#151C21]/95 backdrop-blur-xl rounded-2xl p-4 space-y-1 border border-white/10 shadow-2xl shadow-black/50">
             <Link
               to={isHome ? '#hero' : '/#hero'}
               onClick={() => setIsOpen(false)}
