@@ -25,12 +25,11 @@ const __dirname = dirname(__filename);
 const app = express();
 const server = http.createServer(app);
 
-const allowedOrigins = '*';
-
 const io = new Server(server, {
   cors: {
-    origin: allowedOrigins,
-    methods: ['GET', 'POST']
+    origin: true,
+    methods: ['GET', 'POST'],
+    credentials: true
   }
 });
 
@@ -44,7 +43,7 @@ const PORT = process.env.PORT || 5000;
 
 // ── Middleware ────────────────────────────────────────────────────────────────
 app.use(cors({
-  origin: allowedOrigins,
+  origin: true,
   credentials: true
 }));
 app.use(express.json());
