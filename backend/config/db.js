@@ -3,9 +3,17 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+// Remove channel_binding param that can cause issues with pg driver
+let dbUrl = process.env.DATABASE_URL || '';
+if (dbUrl.includes('channel_binding')) {
+  const url = new URL(dbUrl);
+  url.searchParams.delete('channel_binding');
+  dbUrl = url.toString();
+}
+
 const pool = new pg.Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_URL?.includes('neon.tech') ? { rejectUnauthorized: false } : false,
+  connectionString: dbUrl,
+  ssl: dbUrl.includes('neon.tech') ? { rejectUnauthorized: false } : false,
 });
 
 pool.on('connect', () => {
