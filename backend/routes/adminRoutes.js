@@ -2,7 +2,7 @@ import express from 'express';
 import multer from 'multer';
 import fs from 'fs';
 import path from 'path';
-import { getAllBookings, confirmPayment, rejectPayment, scanBarcode, getSchedule, createOfflineBooking, deleteBooking, getAllUsers, sendPromotion, getAdmins, createAdmin, deleteAdmin, changePassword, getNotifications, confirmCheckin, getStats, closeCourt, getPaymentSettings, createPaymentSetting, updatePaymentSetting, deletePaymentSetting, uploadQris, getEvents, createEvent, updateEvent, deleteEvent, uploadEventImage } from '../controllers/adminController.js';
+import { getAllBookings, confirmPayment, rejectPayment, scanBarcode, getSchedule, createOfflineBooking, deleteBooking, getAllUsers, sendPromotion, getAdmins, createAdmin, deleteAdmin, changePassword, getNotifications, confirmCheckin, getStats, closeCourt, getPaymentSettings, createPaymentSetting, updatePaymentSetting, deletePaymentSetting, uploadQris, getEvents, createEvent, updateEvent, deleteEvent, uploadEventImage, generateResetToken } from '../controllers/adminController.js';
 import authMiddleware, { isAdmin } from '../middleware/authMiddleware.js';
 
 // Setup multer storage for QRIS upload
@@ -29,6 +29,7 @@ router.use(authMiddleware, isAdmin);
 router.get('/bookings', getAllBookings);
 router.get('/schedule', getSchedule);
 router.get('/users', getAllUsers);
+router.put('/users/:id/generate-token', generateResetToken);
 router.get('/staff', getAdmins);
 router.post('/staff', createAdmin);
 router.delete('/staff/:id', deleteAdmin);

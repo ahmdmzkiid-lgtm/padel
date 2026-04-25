@@ -51,7 +51,7 @@ const CTA = () => {
                 Booking Lapangan
                 <ArrowRight size={18} />
               </a>
-              <a href="https://wa.me/6281234567890" target="_blank" rel="noopener noreferrer" className="px-8 py-4 bg-white/10 backdrop-blur text-white font-bold rounded-2xl hover:bg-white/20 transition-all duration-300 flex items-center gap-2 border border-white/20">
+              <a href="https://wa.me/6285183147625" target="_blank" rel="noopener noreferrer" className="px-8 py-4 bg-white/10 backdrop-blur text-white font-bold rounded-2xl hover:bg-white/20 transition-all duration-300 flex items-center gap-2 border border-white/20">
                 <Phone size={18} />
                 WhatsApp
               </a>

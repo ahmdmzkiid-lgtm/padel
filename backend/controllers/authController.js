@@ -117,3 +117,41 @@ export const getMe = async (req, res) => {
     res.status(500).json({ message: 'Terjadi kesalahan server.' });
   }
 };
+
+// POST /api/auth/reset-password-with-token
+export const resetPasswordWithToken = async (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+
+    if (!token || !newPassword) {
+      return res.status(400).json({ message: 'Token dan password baru wajib diisi.' });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ message: 'Password baru minimal harus 6 karakter.' });
+    }
+
+    // Find user by reset token
+    const result = await pool.query('SELECT id FROM users WHERE reset_token = $1', [token]);
+    if (result.rows.length === 0) {
+      return res.status(400).json({ message: 'Kode reset tidak valid atau sudah kadaluarsa.' });
+    }
+
+    const userId = result.rows[0].id;
+
+    // Hash new password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+    // Update password and clear reset_token
+    await pool.query(
+      'UPDATE users SET password = $1, reset_token = NULL WHERE id = $2',
+      [hashedPassword, userId]
+    );
+
+    res.json({ message: 'Password berhasil diubah. Silakan login dengan password baru.' });
+  } catch (error) {
+    console.error('Reset password with token error:', error);
+    res.status(500).json({ message: 'Terjadi kesalahan server.' });
+  }
+};

@@ -1,16 +1,100 @@
 import pool from '../config/db.js';
 
+// ─────────────────────────────────────────────────────────────────────────────
+// HELPER: parse "HH:MM" atau "HH:MM:SS" → total menit sejak midnight
+// ─────────────────────────────────────────────────────────────────────────────
+const timeToMinutes = (time) => {
+  if (!time) return null;
+  const parts = time.split(':');
+  return parseInt(parts[0]) * 60 + parseInt(parts[1]);
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HELPER: apakah dua interval waktu overlap?
+// A: [startA, startA + durA jam)  vs  B: [startB, startB + durB jam)
+// ─────────────────────────────────────────────────────────────────────────────
+const isOverlapping = (startA, durA, startB, durB) => {
+  const minA = timeToMinutes(startA);
+  const minB = timeToMinutes(startB);
+  if (minA === null || minB === null) return false;
+  const endA = minA + durA * 60;
+  const endB = minB + durB * 60;
+  return minA < endB && minB < endA;
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CORE: cek konflik untuk satu slot (court + date + time + duration)
+// Mengecek KEDUA tipe booking (regular & membership) sekaligus
+// Return: false | { conflict: true, type, ... }
+// ─────────────────────────────────────────────────────────────────────────────
+const checkConflict = async (courtName, date, time, duration) => {
+  const dur = parseInt(duration);
+  if (!time || !date || isNaN(dur)) return false;
+
+  // 1. Cek regular bookings (is_membership = false)
+  const regResult = await pool.query(
+    `SELECT id, start_time, duration FROM bookings
+     WHERE court_name = $1
+       AND booking_date = $2
+       AND is_membership = false
+       AND status IN ('confirmed', 'waiting_confirmation', 'checked_in', 'closed', 'pending')`,
+    [courtName, date]
+  );
+
+  for (const row of regResult.rows) {
+    if (isOverlapping(time, dur, row.start_time, parseInt(row.duration))) {
+      return { conflict: true, type: 'regular', row };
+    }
+  }
+
+  // 2. Cek membership sessions — ambil semua membership aktif untuk court ini
+  const memberResult = await pool.query(
+    `SELECT id, membership_sessions, duration FROM bookings
+     WHERE court_name = $1
+       AND is_membership = true
+       AND status IN ('confirmed', 'waiting_confirmation', 'checked_in', 'closed', 'pending')`,
+    [courtName]
+  );
+
+  for (const mb of memberResult.rows) {
+    let sessions = [];
+    try {
+      sessions = typeof mb.membership_sessions === 'string'
+        ? JSON.parse(mb.membership_sessions)
+        : (mb.membership_sessions || []);
+    } catch (e) {
+      continue;
+    }
+    if (!Array.isArray(sessions)) continue;
+
+    for (const s of sessions) {
+      if (s.date === date) {
+        if (isOverlapping(time, dur, s.time, parseInt(mb.duration))) {
+          return { conflict: true, type: 'membership', row: mb, session: s };
+        }
+      }
+    }
+  }
+
+  return false;
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 // POST /api/bookings
+// ─────────────────────────────────────────────────────────────────────────────
 export const createBooking = async (req, res) => {
   try {
-    const { court_name, booking_date, start_time, duration, total_price, is_membership, membership_sessions } = req.body;
+    const {
+      court_name, booking_date, start_time, duration,
+      total_price, is_membership, membership_sessions
+    } = req.body;
     const user_id = req.user.id;
 
     if (!court_name || !duration || !total_price) {
       return res.status(400).json({ message: 'Data booking tidak lengkap.' });
     }
 
-    // Validate Operational Hours (08:00 - 23:00)
+    // Validasi jam operasional (08:00 - 23:00)
     const validateTime = (time) => {
       if (!time) return true;
       const hour = parseInt(time.split(':')[0]);
@@ -24,18 +108,20 @@ export const createBooking = async (req, res) => {
     if (is_membership && membership_sessions) {
       for (const s of membership_sessions) {
         if (!validateTime(s.time)) {
-          return res.status(400).json({ message: `Sesi jam ${s.time} berada di luar jam operasional (08:00 - 23:00).` });
+          return res.status(400).json({
+            message: `Sesi jam ${s.time} berada di luar jam operasional (08:00 - 23:00).`
+          });
         }
       }
     }
 
-    // Check if user is trying to book past time
+    // Validasi tidak booking waktu yang sudah lewat
     const now = new Date();
-    if (booking_date && start_time) {
+    if (!is_membership && booking_date && start_time) {
       const bookingDateTime = new Date(`${booking_date}T${start_time}`);
       if (bookingDateTime < now) {
-        return res.status(400).json({ 
-          message: `Maaf, jam ${start_time} pada tanggal ${booking_date} sudah terlewati.` 
+        return res.status(400).json({
+          message: `Maaf, jam ${start_time} pada tanggal ${booking_date} sudah terlewati.`
         });
       }
     }
@@ -44,103 +130,60 @@ export const createBooking = async (req, res) => {
       for (const s of membership_sessions) {
         const sessionDateTime = new Date(`${s.date}T${s.time}`);
         if (sessionDateTime < now) {
-          return res.status(400).json({ 
-            message: `Sesi tanggal ${s.date} jam ${s.time} sudah terlewati. Silakan pilih jadwal yang akan datang.` 
+          return res.status(400).json({
+            message: `Sesi tanggal ${s.date} jam ${s.time} sudah terlewati. Silakan pilih jadwal yang akan datang.`
           });
         }
       }
     }
 
-    // Check for overlapping bookings (confirmed, waiting, or pending)
-    const checkConflict = async (court_name, date, time, duration) => {
-      try {
-        const dur = parseInt(duration);
-        if (!time || isNaN(dur)) return false;
-
-        // 1. Check regular bookings overlap using OVERLAPS operator
-        const regConflict = await pool.query(
-          `SELECT id FROM bookings 
-           WHERE court_name = $1 
-           AND booking_date = $2 
-           AND status IN ('confirmed', 'waiting_confirmation', 'checked_in', 'closed', 'pending')
-           AND (
-             (start_time, (duration::text || ' hours')::interval) OVERLAPS ($3::time, ($4::text || ' hours')::interval)
-           )`,
-          [court_name, date, time, dur]
-        );
-        if (regConflict.rows.length > 0) return true;
-
-        // 2. Check membership sessions overlap
-        const memberBookings = await pool.query(
-          `SELECT membership_sessions, duration FROM bookings 
-           WHERE court_name = $1 
-           AND is_membership = true 
-           AND status IN ('confirmed', 'waiting_confirmation', 'checked_in', 'closed', 'pending')`,
-          [court_name]
-        );
-
-        for (const mb of memberBookings.rows) {
-          let mSessions = [];
-          try {
-            mSessions = typeof mb.membership_sessions === 'string' 
-              ? JSON.parse(mb.membership_sessions) 
-              : (mb.membership_sessions || []);
-          } catch (e) {
-            continue;
-          }
-          
-          if (!Array.isArray(mSessions)) continue;
-          
-          for (const s of mSessions) {
-            if (s.date === date) {
-              const t1 = `1970-01-01T${time.length === 5 ? time + ':00' : time}`;
-              const t2 = `1970-01-01T${s.time.length === 5 ? s.time + ':00' : s.time}`;
-              
-              const start1 = new Date(t1);
-              const end1 = new Date(start1.getTime() + dur * 60 * 60 * 1000);
-              const start2 = new Date(t2);
-              const end2 = new Date(start2.getTime() + parseInt(mb.duration) * 60 * 60 * 1000);
-
-              if (start1 < end2 && start2 < end1) return true;
-            }
-          }
-        }
-
-        return false;
-      } catch (err) {
-        return false; 
-      }
-    };
-
+    // ── CEK KONFLIK ──────────────────────────────────────────────────────────
     if (!is_membership) {
-      if (await checkConflict(court_name, booking_date, start_time, duration)) {
-        return res.status(400).json({ 
-          message: `Jadwal pada Tanggal ${booking_date} pukul ${start_time} WIB sudah terisi. Silakan pilih waktu lain.` 
+      const conflict = await checkConflict(court_name, booking_date, start_time, duration);
+      if (conflict) {
+        return res.status(400).json({
+          message: `Jadwal pada Tanggal ${booking_date} pukul ${start_time} WIB sudah terisi. Silakan pilih waktu lain.`
         });
       }
     } else if (is_membership && membership_sessions) {
+      // Validasi: tidak ada duplikat di dalam input itu sendiri
+      const seen = new Set();
+      for (const s of membership_sessions) {
+        const key = `${s.date}_${s.time}`;
+        if (seen.has(key)) {
+          return res.status(400).json({
+            message: `Terdapat duplikat jadwal: ${s.date} pukul ${s.time}. Setiap sesi harus berbeda.`
+          });
+        }
+        seen.add(key);
+      }
+
+      // Cek konflik setiap sesi terhadap booking yang sudah ada
       for (const session of membership_sessions) {
-        if (await checkConflict(court_name, session.date, session.time, duration)) {
-          return res.status(400).json({ 
-            message: `Salah satu jadwal pilihan Anda, yaitu Tanggal ${session.date} pukul ${session.time} WIB, sudah terisi. Silakan ganti jadwal tersebut.` 
+        const conflict = await checkConflict(court_name, session.date, session.time, duration);
+        if (conflict) {
+          return res.status(400).json({
+            message: `Jadwal sesi ${session.date} pukul ${session.time} WIB sudah terisi. Silakan ganti jadwal tersebut.`
           });
         }
       }
     }
 
-    // Insert booking
+    // ── INSERT ───────────────────────────────────────────────────────────────
     const result = await pool.query(
-      `INSERT INTO bookings (user_id, court_name, booking_date, start_time, duration, total_price, status, is_membership, membership_sessions) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+      `INSERT INTO bookings
+         (user_id, court_name, booking_date, start_time, duration, total_price, status, is_membership, membership_sessions)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       RETURNING *`,
       [
-        user_id, 
-        court_name, 
-        booking_date || null, 
-        start_time || null, 
-        duration, 
-        total_price, 
-        'pending', 
-        is_membership || false, 
+        user_id,
+        court_name,
+        booking_date || null,
+        start_time || null,
+        duration,
+        total_price,
+        'pending',
+        is_membership || false,
         membership_sessions ? JSON.stringify(membership_sessions) : null
       ]
     );
@@ -155,16 +198,18 @@ export const createBooking = async (req, res) => {
   }
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
 // GET /api/bookings/my-bookings
+// ─────────────────────────────────────────────────────────────────────────────
 export const getMyBookings = async (req, res) => {
   try {
     const user_id = req.user.id;
 
     const result = await pool.query(
-      `SELECT b.*, b.rejection_reason, p.status as payment_status, p.payment_method, p.paid_at 
-       FROM bookings b 
-       LEFT JOIN payments p ON b.id = p.booking_id 
-       WHERE b.user_id = $1 
+      `SELECT b.*, b.rejection_reason, p.status as payment_status, p.payment_method, p.paid_at
+       FROM bookings b
+       LEFT JOIN payments p ON b.id = p.booking_id
+       WHERE b.user_id = $1
        ORDER BY b.created_at DESC`,
       [user_id]
     );
@@ -176,43 +221,59 @@ export const getMyBookings = async (req, res) => {
   }
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
 // GET /api/bookings/schedule?date=YYYY-MM-DD
+//
+// Mengembalikan semua slot terisi untuk tanggal tertentu,
+// dari KEDUA tipe booking (regular & membership sessions).
+// Setiap entry: { court_name, start_time (HH:MM), duration, status }
+// ─────────────────────────────────────────────────────────────────────────────
 export const getPublicSchedule = async (req, res) => {
   try {
     const { date } = req.query;
     if (!date) return res.status(400).json({ message: 'Tanggal harus ditentukan.' });
 
-    // 1. Regular bookings
+    // 1. Regular bookings — langsung punya booking_date & start_time di kolom DB
     const regResult = await pool.query(
-      `SELECT court_name, start_time, duration, status 
-       FROM bookings 
-       WHERE booking_date = $1 
-       AND status IN ('confirmed', 'waiting_confirmation', 'checked_in', 'closed', 'pending')`,
+      `SELECT court_name,
+              to_char(start_time, 'HH24:MI') AS start_time,
+              duration,
+              status
+       FROM bookings
+       WHERE booking_date = $1
+         AND is_membership = false
+         AND status IN ('confirmed', 'waiting_confirmation', 'checked_in', 'closed', 'pending')`,
       [date]
-    );
-
-    // 2. Membership sessions
-    const memberResult = await pool.query(
-      `SELECT court_name, membership_sessions, duration, status 
-       FROM bookings 
-       WHERE is_membership = true 
-       AND status IN ('confirmed', 'waiting_confirmation', 'checked_in', 'closed', 'pending')`
     );
 
     const schedule = [...regResult.rows];
 
-    for (const mb of memberResult.rows) {
-      const mSessions = typeof mb.membership_sessions === 'string' 
-        ? JSON.parse(mb.membership_sessions) 
-        : mb.membership_sessions;
-      
-      if (!mSessions) continue;
+    // 2. Membership bookings — sessions disimpan sebagai JSON array
+    const memberResult = await pool.query(
+      `SELECT court_name, membership_sessions, duration, status
+       FROM bookings
+       WHERE is_membership = true
+         AND status IN ('confirmed', 'waiting_confirmation', 'checked_in', 'closed', 'pending')`
+    );
 
-      for (const s of mSessions) {
-        if (s.date === date) {
+    for (const mb of memberResult.rows) {
+      let sessions = [];
+      try {
+        sessions = typeof mb.membership_sessions === 'string'
+          ? JSON.parse(mb.membership_sessions)
+          : (mb.membership_sessions || []);
+      } catch (e) {
+        continue;
+      }
+      if (!Array.isArray(sessions)) continue;
+
+      for (const s of sessions) {
+        // Normalise ke "HH:MM" supaya konsisten dengan format regular
+        const normalTime = s.time ? s.time.substring(0, 5) : null;
+        if (s.date === date && normalTime) {
           schedule.push({
-            court_name: mb.court_name,
-            start_time: s.time,
+            court_name: mb.court_name,  // penting: filter di frontend pakai ini
+            start_time: normalTime,
             duration: mb.duration,
             status: mb.status
           });

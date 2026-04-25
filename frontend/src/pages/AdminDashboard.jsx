@@ -60,6 +60,27 @@ const AdminDashboard = () => {
     reason: ''
   });
 
+  // Reset Password Modal State
+  const [resetPasswordModal, setResetPasswordModal] = useState({
+    show: false,
+    userId: null,
+    userName: '',
+    generatedToken: '',
+    loading: false
+  });
+
+  const handleGenerateToken = async () => {
+    try {
+      setResetPasswordModal({ ...resetPasswordModal, loading: true });
+      const response = await api.put(`/admin/users/${resetPasswordModal.userId}/generate-token`);
+      setResetPasswordModal({ ...resetPasswordModal, loading: false, generatedToken: response.data.token });
+      showAlert(`Token untuk ${resetPasswordModal.userName} berhasil dibuat.`, 'success');
+    } catch (error) {
+      showAlert(error.response?.data?.message || 'Gagal membuat token.', 'error');
+      setResetPasswordModal({ ...resetPasswordModal, loading: false });
+    }
+  };
+
   const handleCloseCourt = async () => {
     try {
       await api.post('/admin/close-court', {
@@ -163,7 +184,7 @@ const AdminDashboard = () => {
     if (activeTab === 'schedule') {
       fetchSchedule();
     }
-    if (activeTab === 'promotions') {
+    if (activeTab === 'promotions' || activeTab === 'users') {
       fetchCustomers();
     }
     if (activeTab === 'chat') {
@@ -758,6 +779,14 @@ const AdminDashboard = () => {
                 <span className="text-sm">Voucher Diskon</span>
               </button>
 
+              <button 
+                onClick={() => setActiveTab('users')}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${activeTab === 'users' ? 'bg-white/10 text-white font-semibold shadow-sm' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}
+              >
+                <Users size={18} className="shrink-0" />
+                <span className="text-sm">Kelola Pelanggan</span>
+              </button>
+
               {user?.role === 'owner' && (
                 <button 
                   onClick={() => setActiveTab('admins')}
@@ -835,6 +864,7 @@ const AdminDashboard = () => {
                activeTab === 'overview' ? 'Overview' : 
                activeTab === 'promotions' ? 'Promosi & Diskon' : 
                activeTab === 'admins' ? 'Kelola Admin' :
+               activeTab === 'users' ? 'Kelola Pelanggan' :
                activeTab === 'settings' ? 'Pengaturan Pembayaran' :
                activeTab === 'events' ? 'Kelola Event' : 'Notifikasi'}
             </span>
@@ -851,6 +881,7 @@ const AdminDashboard = () => {
                  activeTab === 'schedule' ? 'Monitor dan kelola okupansi lapangan secara real-time.' : 
                  activeTab === 'overview' ? 'Ringkasan performa bisnis PadelZone hari ini.' : 
                  activeTab === 'promotions' ? 'Kirim info diskon dan kelola database email pelanggan.' :
+                 activeTab === 'users' ? 'Kelola daftar pelanggan dan reset password.' :
                  activeTab === 'admins' ? 'Kelola akses dan akun staf admin PadelZone.' :
                  activeTab === 'settings' ? 'Kelola rekening bank dan QRIS untuk pembayaran pelanggan.' :
                  activeTab === 'events' ? 'Buat dan kelola event, turnamen, dan kegiatan PadelZone.' :
@@ -1347,6 +1378,76 @@ const AdminDashboard = () => {
                           </tr>
                         );
                       })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'users' && (
+            <div className="flex flex-col space-y-6 animate-fade-in">
+              <div className="bg-[#151C21] rounded-[2.5rem] border border-white/5 shadow-2xl overflow-hidden relative p-8">
+                <div className="flex items-center gap-4 mb-8">
+                  <div className="w-14 h-14 bg-primary/20 text-primary rounded-2xl flex items-center justify-center shadow-lg shadow-primary/20">
+                    <Users size={28} />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold text-white">Daftar Pelanggan & Reset Password</h3>
+                    <p className="text-slate-400">Kelola pelanggan terdaftar dan reset password jika mereka lupa.</p>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto rounded-2xl border border-white/5">
+                  <table className="w-full text-left border-collapse min-w-[600px]">
+                    <thead>
+                      <tr className="bg-white/[0.02] border-b border-white/5 text-slate-500 text-[10px] uppercase tracking-widest font-bold">
+                        <th className="px-6 py-4">Nama Pelanggan</th>
+                        <th className="px-6 py-4">No. Telp / Email</th>
+                        <th className="px-6 py-4">Status</th>
+                        <th className="px-6 py-4 text-right">Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {customersLoading ? (
+                        <tr><td colSpan="4" className="px-6 py-12 text-center text-slate-500">Memuat data...</td></tr>
+                      ) : customerList.map((u) => (
+                        <tr key={u.id} className="hover:bg-white/[0.02] transition-colors">
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white font-bold text-xs">
+                                {u.name.charAt(0)}
+                              </div>
+                              <div className="text-sm font-bold text-white">{u.name}</div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="text-xs text-slate-300">{u.email}</div>
+                            <div className="text-[11px] text-slate-500">{u.phone || '-'}</div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-green-500/10 text-green-400">
+                              Active
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            <button 
+                              onClick={() => {
+                                setResetPasswordModal({
+                                  show: true,
+                                  userId: u.id,
+                                  userName: u.name,
+                                  generatedToken: '',
+                                  loading: false
+                                });
+                              }}
+                              className="px-4 py-2 bg-white/5 hover:bg-primary hover:text-white border border-white/10 hover:border-primary text-primary text-xs font-bold rounded-lg transition-all"
+                            >
+                              Generate Token
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 </div>
@@ -3235,6 +3336,69 @@ const AdminDashboard = () => {
                 >
                   Tolak Pembayaran
                 </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Elegant Reset Password Modal */}
+      {resetPasswordModal.show && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+          <div className="bg-[#1A2127] w-full max-w-md rounded-[32px] border border-white/10 p-8 shadow-2xl animate-scale-in text-center">
+            <div className="w-16 h-16 bg-primary/20 text-primary rounded-2xl flex items-center justify-center mb-6 shadow-inner mx-auto">
+              <ShieldCheck size={32} />
+            </div>
+            <h3 className="text-2xl font-black text-white mb-2">Token Reset Password</h3>
+            <p className="text-slate-500 text-sm mb-6">
+              Buat token 6-digit unik untuk <span className="font-bold text-white">{resetPasswordModal.userName}</span>. Berikan token ini ke pelanggan agar mereka bisa mengubah passwordnya sendiri.
+            </p>
+            
+            <div className="space-y-6">
+              {resetPasswordModal.generatedToken ? (
+                <div className="bg-black/40 border border-white/10 rounded-2xl p-6 text-center">
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">Kode Verifikasi</p>
+                  <div className="text-4xl font-mono font-black text-primary tracking-widest mx-auto flex justify-center gap-2">
+                    {resetPasswordModal.generatedToken.split('').map((char, i) => (
+                      <span key={i} className="w-10 h-12 bg-[#151C21] border border-white/10 rounded-xl flex items-center justify-center shadow-inner">
+                        {char}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="h-24 flex items-center justify-center border border-dashed border-white/10 rounded-2xl bg-white/[0.02]">
+                  <span className="text-slate-500 text-sm italic">Belum ada token. Klik tombol di bawah.</span>
+                </div>
+              )}
+
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => setResetPasswordModal({ show: false, userId: null, userName: '', generatedToken: '', loading: false })}
+                  className="flex-1 py-4 bg-white/5 hover:bg-white/10 text-white font-bold rounded-2xl transition-all"
+                >
+                  Tutup
+                </button>
+                {!resetPasswordModal.generatedToken && (
+                  <button 
+                    onClick={handleGenerateToken}
+                    disabled={resetPasswordModal.loading}
+                    className="flex-[2] py-4 bg-primary hover:bg-primary-light text-white font-black rounded-2xl transition-all shadow-xl shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {resetPasswordModal.loading ? 'Memproses...' : 'Generate Token Baru'}
+                  </button>
+                )}
+                {resetPasswordModal.generatedToken && (
+                  <button 
+                    onClick={() => {
+                      navigator.clipboard.writeText(resetPasswordModal.generatedToken);
+                      showAlert('Token berhasil disalin ke clipboard!', 'success');
+                    }}
+                    className="flex-[2] py-4 bg-green-500 hover:bg-green-600 text-white font-black rounded-2xl transition-all shadow-xl shadow-green-500/20 flex items-center justify-center gap-2"
+                  >
+                    Salin Token
+                  </button>
+                )}
               </div>
             </div>
           </div>

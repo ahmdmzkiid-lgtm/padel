@@ -816,3 +816,27 @@ export const uploadEventImage = async (req, res) => {
     res.status(500).json({ message: 'Gagal mengunggah gambar.' });
   }
 };
+
+// PUT /api/admin/users/:id/generate-token
+export const generateResetToken = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Generate 6 digit token
+    const token = Math.floor(100000 + Math.random() * 900000).toString();
+
+    const result = await pool.query(
+      'UPDATE users SET reset_token = $1 WHERE id = $2 RETURNING id, name, email, reset_token',
+      [token, id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'User tidak ditemukan.' });
+    }
+
+    res.json({ message: 'Token reset berhasil dibuat.', user: result.rows[0], token: result.rows[0].reset_token });
+  } catch (error) {
+    console.error('Generate reset token error:', error);
+    res.status(500).json({ message: 'Gagal membuat token reset.' });
+  }
+};
