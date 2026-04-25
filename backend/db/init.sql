@@ -30,6 +30,8 @@ CREATE TABLE IF NOT EXISTS bookings (
   guest_name VARCHAR(100),
   confirmed_by INTEGER REFERENCES users(id), -- Fixed: should be integer referencing user ID
   rejection_reason TEXT,
+  voucher_id INTEGER, -- Added: missing column
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Added: missing column
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
