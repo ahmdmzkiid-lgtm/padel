@@ -41,11 +41,14 @@ const Navbar = () => {
     };
   }, []);
 
-  // Close dropdown when clicking outside
+  // Close dropdown when clicking outside (Desktop only)
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (tentangRef.current && !tentangRef.current.contains(e.target)) {
-        setTentangOpen(false);
+      // Hanya jalankan logika ini jika layar sedang di mode desktop (lg)
+      if (window.innerWidth >= 1024) {
+        if (tentangRef.current && !tentangRef.current.contains(e.target)) {
+          setTentangOpen(false);
+        }
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
