@@ -119,14 +119,14 @@ const Pricing = () => {
 
                 {/* Price */}
                 <div className="mb-8">
-                  <div className="flex items-baseline gap-1">
+                  <div className="flex items-baseline gap-1 flex-wrap">
                     <span className="text-sm text-slate-400">Rp</span>
-                    <span className={`text-5xl font-bold font-display bg-gradient-to-r ${plan.accent} bg-clip-text text-transparent`}>
+                    <span className={`text-4xl sm:text-5xl font-bold font-display bg-gradient-to-r ${plan.accent} bg-clip-text text-transparent`}>
                       {plan.price}
                     </span>
-                    <span className="text-slate-400 text-sm">{plan.unit}</span>
+                    <span className="text-slate-400 text-xs sm:text-sm">{plan.unit}</span>
                   </div>
-                  <p className="text-xs text-red-400 mt-2 line-through opacity-70">{plan.period}</p>
+                  <p className="text-[10px] sm:text-xs text-red-400 mt-2 line-through opacity-70">{plan.period}</p>
                 </div>
 
                 {/* Features */}
