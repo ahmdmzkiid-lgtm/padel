@@ -99,3 +99,15 @@ CREATE TABLE IF NOT EXISTS events (
   is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- =============================================
+-- Buat Akun Admin (Email: padelzone@admin.id | Password: padelzone)
+-- =============================================
+INSERT INTO users (name, email, password, is_admin, role)
+VALUES (
+  'Admin PadelZone',
+  'padelzone@admin.id',
+  '$2b$10$oABBQlpyFaOKYY6XIsRDPujF4gyglbQ9jsE8Ffu8GNLjxAbtbmSW.',
+  true,
+  'owner'
+) ON CONFLICT (email) DO NOTHING;
