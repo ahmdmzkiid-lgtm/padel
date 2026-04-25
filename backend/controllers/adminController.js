@@ -825,9 +825,12 @@ export const generateResetToken = async (req, res) => {
     // Generate 6 digit token
     const token = Math.floor(100000 + Math.random() * 900000).toString();
 
+    // FIX: set expiry 15 menit dari sekarang — token tidak bisa dipakai setelah expired
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 menit
+
     const result = await pool.query(
-      'UPDATE users SET reset_token = $1 WHERE id = $2 RETURNING id, name, email, reset_token',
-      [token, id]
+      'UPDATE users SET reset_token = $1, reset_token_expires = $2 WHERE id = $3 RETURNING id, name, email, reset_token',
+      [token, expiresAt, id]
     );
 
     if (result.rows.length === 0) {

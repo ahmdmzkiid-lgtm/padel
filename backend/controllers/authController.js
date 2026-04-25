@@ -19,6 +19,11 @@ export const register = async (req, res) => {
       return res.status(400).json({ message: 'Nama, email, dan password wajib diisi.' });
     }
 
+    // Validasi panjang input
+    if (name.length > 100) return res.status(400).json({ message: 'Nama terlalu panjang.' });
+    if (email.length > 255) return res.status(400).json({ message: 'Email terlalu panjang.' });
+    if (password.length < 6) return res.status(400).json({ message: 'Password minimal 6 karakter.' });
+
     // Check if email already exists
     const existingUser = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
     if (existingUser.rows.length > 0) {
@@ -119,6 +124,10 @@ export const getMe = async (req, res) => {
 };
 
 // POST /api/auth/reset-password-with-token
+// ─────────────────────────────────────────────────────────────────────────────
+// FIX: sekarang token dicek expired (15 menit) dan langsung di-clear setelah
+// dipakai sekali — tidak bisa dipakai ulang atau di-brute-force lama-lama.
+// ─────────────────────────────────────────────────────────────────────────────
 export const resetPasswordWithToken = async (req, res) => {
   try {
     const { token, newPassword } = req.body;
@@ -131,9 +140,17 @@ export const resetPasswordWithToken = async (req, res) => {
       return res.status(400).json({ message: 'Password baru minimal harus 6 karakter.' });
     }
 
-    // Find user by reset token
-    const result = await pool.query('SELECT id FROM users WHERE reset_token = $1', [token]);
+    // Cari user berdasarkan token DAN pastikan belum expired (15 menit)
+    const result = await pool.query(
+      `SELECT id FROM users 
+       WHERE reset_token = $1 
+         AND reset_token_expires IS NOT NULL 
+         AND reset_token_expires > NOW()`,
+      [token]
+    );
+
     if (result.rows.length === 0) {
+      // Pesan sama untuk token salah maupun expired — tidak bocorkan info
       return res.status(400).json({ message: 'Kode reset tidak valid atau sudah kadaluarsa.' });
     }
 
@@ -143,9 +160,9 @@ export const resetPasswordWithToken = async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(newPassword, salt);
 
-    // Update password and clear reset_token
+    // Update password dan hapus reset token sekaligus — tidak bisa dipakai lagi
     await pool.query(
-      'UPDATE users SET password = $1, reset_token = NULL WHERE id = $2',
+      'UPDATE users SET password = $1, reset_token = NULL, reset_token_expires = NULL WHERE id = $2',
       [hashedPassword, userId]
     );
 
