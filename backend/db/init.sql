@@ -103,6 +103,14 @@ CREATE TABLE IF NOT EXISTS events (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- 9. Promotions
+CREATE TABLE IF NOT EXISTS promotions (
+  id SERIAL PRIMARY KEY,
+  title VARCHAR(200) NOT NULL,
+  content TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- =============================================
 -- Buat Akun Admin (Email: padelzone@admin.id | Password: padelzone)
 -- =============================================
