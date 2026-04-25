@@ -1,5 +1,5 @@
 -- =============================================
--- PadelZone Database Schema (Complete)
+-- PadelZone Database Schema (Complete & Fixed)
 -- =============================================
 
 -- 1. Users
@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS bookings (
   is_membership BOOLEAN DEFAULT false,
   membership_sessions JSONB,
   guest_name VARCHAR(100),
-  confirmed_by VARCHAR(100),
+  confirmed_by INTEGER REFERENCES users(id), -- Fixed: should be integer referencing user ID
   rejection_reason TEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS payments (
   payment_proof VARCHAR(255),
   status VARCHAR(20) DEFAULT 'pending',
   paid_at TIMESTAMP,
+  confirmed_by INTEGER REFERENCES users(id), -- Added: missing column
   voucher_id INTEGER
 );
 
@@ -84,7 +85,9 @@ CREATE TABLE IF NOT EXISTS payment_settings (
   account_number VARCHAR(50),
   account_holder VARCHAR(100),
   qris_image VARCHAR(255),
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  is_active BOOLEAN DEFAULT true, -- Added: missing column
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP -- Added: missing column
 );
 
 -- 8. Events
