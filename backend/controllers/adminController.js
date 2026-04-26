@@ -698,9 +698,9 @@ export const deletePaymentSetting = async (req, res) => {
 };
 
 // POST /api/admin/payment-settings/qris (upload QRIS image)
-export const uploadQris = async (req, res) => {
+export const uploadQrisHandler = async (req, res) => {
   try {
-    const qris_image = req.file ? `/uploads/${req.file.filename}` : null;
+    const qris_image = req.file ? req.file.path : null; // Cloudinary URL
 
     if (!qris_image) {
       return res.status(400).json({ message: 'File QRIS wajib diunggah.' });
@@ -798,12 +798,12 @@ export const deleteEvent = async (req, res) => {
 };
 
 // POST /api/admin/events/:id/image
-export const uploadEventImage = async (req, res) => {
+export const uploadEventImageHandler = async (req, res) => {
   try {
     const { id } = req.params;
     if (!req.file) return res.status(400).json({ message: 'File gambar wajib diunggah.' });
 
-    const imagePath = '/uploads/' + req.file.filename;
+    const imagePath = req.file.path; // Cloudinary URL
     const result = await pool.query(
       'UPDATE events SET image = $1 WHERE id = $2 RETURNING *',
       [imagePath, id]

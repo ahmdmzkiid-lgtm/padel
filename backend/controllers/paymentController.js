@@ -5,7 +5,7 @@ export const simulatePayment = async (req, res) => {
   try {
     const { booking_id, amount, payment_method, payment_name, voucher_id } = req.body;
     const user_id = req.user.id;
-    const payment_proof = req.file ? `/uploads/${req.file.filename}` : null;
+    const payment_proof = req.file ? req.file.path : null; // Cloudinary URL
 
     if (!booking_id || !amount || !payment_method || !payment_name) {
       return res.status(400).json({ message: 'Semua field wajib diisi.' });
