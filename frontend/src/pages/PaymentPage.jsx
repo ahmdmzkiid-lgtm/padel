@@ -357,7 +357,7 @@ const PaymentPage = () => {
                     <div className="flex justify-center">
                       <div className="bg-white rounded-2xl p-3 shadow-2xl">
                         <img
-                          src={`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}${qrisData.qris_image}`}
+                          src={qrisData.qris_image?.startsWith('http') ? qrisData.qris_image : `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}${qrisData.qris_image}`}
                           alt="QRIS Code"
                           className="w-56 h-auto rounded-xl"
                         />

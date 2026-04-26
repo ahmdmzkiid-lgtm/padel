@@ -1033,7 +1033,7 @@ const AdminDashboard = () => {
                                 {b.payment_status === 'waiting_confirmation' && (
                                   <>
                                     {b.payment_proof && (
-                                      <a href={`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}${b.payment_proof}`} target="_blank" rel="noreferrer" className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors" title="Lihat Bukti Transfer">
+                                      <a href={b.payment_proof?.startsWith('http') ? b.payment_proof : `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}${b.payment_proof}`} target="_blank" rel="noreferrer" className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors" title="Lihat Bukti Transfer">
                                         <Search size={16} />
                                       </a>
                                     )}
@@ -2977,7 +2977,7 @@ const AdminDashboard = () => {
                             <div className="relative group">
                               <div className="w-full max-w-[280px] bg-white rounded-3xl p-4 shadow-2xl">
                                 <img
-                                  src={`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}${qrisData.qris_image}`}
+                                  src={qrisData.qris_image?.startsWith('http') ? qrisData.qris_image : `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}${qrisData.qris_image}`}
                                   alt="QRIS Code"
                                   className="w-full h-auto rounded-2xl"
                                 />
@@ -3159,7 +3159,7 @@ const AdminDashboard = () => {
                           {/* Thumbnail */}
                           <div className="w-full md:w-32 h-24 rounded-xl overflow-hidden shrink-0 bg-white/5 flex items-center justify-center">
                             {ev.image ? (
-                              <img src={`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}${ev.image}`} alt={ev.title} className="w-full h-full object-cover" />
+                              <img src={ev.image?.startsWith('http') ? ev.image : `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}${ev.image}`} alt={ev.title} className="w-full h-full object-cover" />
                             ) : (
                               <ImageIcon size={24} className="text-slate-600" />
                             )}
