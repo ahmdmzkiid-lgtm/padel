@@ -92,7 +92,7 @@ const Events = () => {
                 {/* Image or gradient background */}
                 {event.image ? (
                   <img
-                    src={`${API_URL}${event.image}`}
+                    src={event.image?.startsWith('http') ? event.image : `${API_URL}${event.image}`}
                     alt={event.title}
                     className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                   />

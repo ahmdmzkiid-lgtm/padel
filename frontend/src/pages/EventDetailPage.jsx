@@ -85,7 +85,7 @@ const EventDetailPage = () => {
       <div className="relative pt-28 pb-12 px-4 sm:px-8 min-h-[50vh] sm:min-h-[60vh] flex flex-col justify-between overflow-hidden">
         {event.image ? (
           <img
-            src={`${API_URL}${event.image}`}
+            src={event.image?.startsWith('http') ? event.image : `${API_URL}${event.image}`}
             alt={event.title}
             className="absolute inset-0 w-full h-full object-cover"
           />
@@ -235,7 +235,7 @@ const EventDetailPage = () => {
                     >
                       {ev.image ? (
                         <img
-                          src={`${API_URL}${ev.image}`}
+                          src={ev.image?.startsWith('http') ? ev.image : `${API_URL}${ev.image}`}
                           alt={ev.title}
                           className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                         />
