@@ -2,14 +2,13 @@ import { Router } from 'express';
 import { simulatePayment } from '../controllers/paymentController.js';
 import authMiddleware from '../middleware/authMiddleware.js';
 import pool from '../config/db.js';
-import { uploadPayment, createUploadMiddleware } from '../config/cloudinary.js';
+import { createUploadMiddleware } from '../config/cloudinary.js';
 
 // Middleware upload payment proof → Cloudinary
-const uploadPaymentProof = createUploadMiddleware(uploadPayment, 'payment_proof');
+const uploadPaymentProof = createUploadMiddleware('payment_proof', 'padelzone/payments');
 
 const router = Router();
 
-// GET /api/payments/methods
 router.get('/methods', authMiddleware, async (req, res) => {
   try {
     const result = await pool.query(
@@ -22,7 +21,6 @@ router.get('/methods', authMiddleware, async (req, res) => {
   }
 });
 
-// POST /api/payments
 router.post('/', authMiddleware, uploadPaymentProof, simulatePayment);
 
 export default router;
